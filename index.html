@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kino Hub - Միասին</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root { --main-red: #e50914; --dark-bg: #141414; --card-bg: #232323; }
+        
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--dark-bg); 
+            color: white; 
+            margin: 0; 
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.8);
+            text-align: center;
+            border-bottom: 2px solid var(--main-red);
+        }
+
+        .container {
+            width: 95%;
+            max-width: 500px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .id-badge {
+            font-size: 1.2rem;
+            color: var(--main-red);
+            background: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #111;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--main-red);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 5px;
+        }
+
+        button:active { transform: scale(0.98); }
+
+        .video-container {
+            width: 100%;
+            background: black;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 1px solid #333;
+            min-height: 200px;
+        }
+
+        video { width: 100%; display: block; }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .online { background-color: #4cd137; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2 style="margin:0; color: var(--main-red);">🍿 KINO HUB</h2>
+</header>
+
+<div class="container">
+    <div class="card">
+        <div style="font-size: 0.9rem; color: #aaa;">Քո միացման ID-ն</div>
+        <div id="my-id" class="id-badge">Ստեղծվում է...</div>
+        
+        <input type="text" id="friend-id" placeholder="Գրիր ընկերոջդ ID-ն">
+        <button onclick="connectAndShare()">🚀 Միանալ և Ցուցադրել</button>
+        <div id="status-text" style="font-size: 0.8rem; margin-top: 10px; color: #888;">
+            <span id="dot" class="status-dot"></span> Սպասում ենք քեզ...
+        </div>
+    </div>
+
+    <div class="video-container">
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <p style="font-size: 0.8rem; color: #666; text-align: center;">
+        * Android-ով նայելիս ընտրիր "Share Screen" և մտիր hayer.tv
+    </p>
+</div>
+
+<script>
+    const remoteVideo = document.getElementById('remoteVideo');
+    const statusText = document.getElementById('status-text');
+    const dot = document.getElementById('dot');
+    const peer = new Peer();
+
+    peer.on('open', id => {
+        document.getElementById('my-id').innerText = id;
+        dot.classList.add('online');
+        statusText.innerHTML = '<span class="status-dot online"></span> Պատրաստ է';
+    });
+
+    // Երբ ընկերդ է քեզ զանգում (ստրիմ ուղարկում)
+    peer.on('call', call => {
+        statusText.innerText = "Ստանում ենք պատկերը...";
+        call.answer();
+        call.on('stream', stream => {
+            remoteVideo.srcObject = stream;
+        });
+    });
+
+    async function connectAndShare() {
+        const friendId = document.getElementById('friend-id').value;
+        if (!friendId) return alert("Գրիր ընկերոջդ ID-ն");
+
+        try {
+            // Սա կաշխատի միայն HTTPS-ով
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: true
+            });
+            
+            peer.call(friendId, stream);
+            statusText.innerText = "Ցուցադրումը սկսվեց:";
+        } catch (err) {
+            alert("Սխալ. Համոզվիր, որ HTTPS-ով ես մտել:");
+        }
+    }
+</script>
+
+</body>
+</html>
