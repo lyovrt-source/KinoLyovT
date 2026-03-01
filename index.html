@@ -3,95 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kino Hub Pro</title>
+    <title>Universal Cinema Hub</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --red: #e50914; --black: #141414; }
-        body { font-family: sans-serif; background: var(--black); color: white; text-align: center; margin: 0; padding: 10px; }
-        .box { background: #222; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
-        input { width: 80%; padding: 10px; margin: 5px; border-radius: 5px; border: none; background: #333; color: white; }
-        button { padding: 10px 20px; background: var(--red); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        video { width: 100%; max-width: 800px; border-radius: 8px; background: black; margin-top: 10px; }
-        .status { font-size: 0.8rem; color: #888; margin-top: 5px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #111; color: white; margin: 0; overflow: hidden; }
+        .nav-bar { background: #222; padding: 10px; display: flex; gap: 5px; border-bottom: 2px solid #e50914; }
+        input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; background: #333; color: white; }
+        button { padding: 10px; background: #e50914; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .viewer { width: 100vw; height: calc(100vh - 60px); border: none; background: white; }
+        .id-info { font-size: 10px; color: #888; position: absolute; bottom: 5px; left: 5px; }
     </style>
 </head>
 <body>
 
-    <h2 style="color: var(--red);">🍿 KINO HUB PRO</h2>
+<div class="nav-bar">
+    <input type="text" id="url-input" placeholder="Տեղադրիր ցանկացած սայթի հղում...">
+    <button onclick="syncBrowse()">🚀 Բացել բոլորի մոտ</button>
+    <input type="text" id="peer-id-input" style="width: 80px;" placeholder="Friend ID">
+    <button onclick="connect()">Connect</button>
+</div>
 
-    <div class="box">
-        <div>Քո ID: <b id="my-id" style="color: #0dff00;">...</b></div>
-        <input type="text" id="friend-id" placeholder="Ընկերոջդ ID-ն">
-        <button onclick="connectToFriend()">Միանալ</button>
-        <div id="conn-status" class="status">Անջատված է</div>
-    </div>
+<iframe id="browser-frame" class="viewer" src="about:blank"></iframe>
 
-    <div class="box">
-        <input type="text" id="video-url" placeholder="Տեղադրիր վիդեոյի լինկը">
-        <button onclick="loadAndSendVideo()">🎥 Բացել բոլորի մոտ</button>
-    </div>
-
-    <video id="mainVideo" controls playsinline></video>
+<div class="id-info">Քո ID: <span id="my-id">...</span></div>
 
 <script>
-    const video = document.getElementById('mainVideo');
+    const frame = document.getElementById('browser-frame');
     const peer = new Peer();
     let conn;
 
     peer.on('open', id => document.getElementById('my-id').innerText = id);
 
-    // Երբ ընկերդ է միանում քեզ
+    // Երբ ընկերդ միանում է
     peer.on('connection', c => {
         conn = c;
-        setupConnection();
+        setupReceiver();
     });
 
-    // Մենք ենք միանում ընկերոջը
-    function connectToFriend() {
-        const fId = document.getElementById('friend-id').value;
-        conn = peer.connect(fId);
-        setupConnection();
+    // Միանալ ընկերոջը
+    function connect() {
+        const id = document.getElementById('peer-id-input').value;
+        conn = peer.connect(id);
+        setupReceiver();
     }
 
-    function setupConnection() {
-        document.getElementById('conn-status').innerText = "Միացված է ✅";
-        document.getElementById('conn-status').style.color = "#0dff00";
-
+    function setupReceiver() {
         conn.on('data', data => {
-            if (data.type === 'load') {
-                video.src = data.url;
-                video.play();
-            }
-            if (data.type === 'play') video.play();
-            if (data.type === 'pause') video.pause();
-            if (data.type === 'sync') {
-                if (Math.abs(video.currentTime - data.time) > 1) {
-                    video.currentTime = data.time;
-                }
+            if (data.type === 'nav') {
+                frame.src = data.url;
             }
         });
+        alert("Միացված է:");
     }
 
-    function loadAndSendVideo() {
-        const url = document.getElementById('video-url').value;
-        if (!url) return alert("Հղումը դիր");
+    function syncBrowse() {
+        let url = document.getElementById('url-input').value;
+        if (!url.startsWith('http')) url = 'https://' + url;
         
-        video.src = url;
-        video.play();
-
-        if (conn && conn.open) {
-            conn.send({ type: 'load', url: url });
+        frame.src = url;
+        if (conn) {
+            conn.send({ type: 'nav', url: url });
         }
     }
-
-    // Սինխրոնիզացիա սեղմելիս
-    video.onplay = () => conn?.send({ type: 'play' });
-    video.onpause = () => conn?.send({ type: 'pause' });
-    setInterval(() => {
-        if (conn && conn.open && !video.paused) {
-            conn.send({ type: 'sync', time: video.currentTime });
-        }
-    }, 2000);
 </script>
 </body>
 </html>
